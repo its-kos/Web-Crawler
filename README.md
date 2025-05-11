@@ -39,7 +39,7 @@ Built using Go version 1.23+.
 
 **Language:** Go
 
-**Packages:** Chi (V5)
+**Packages:** Chi (V5), Goquery
 
 **Extras:** -
 

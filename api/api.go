@@ -12,12 +12,10 @@ import (
 type ApiServer struct {
 	addr         string
 	startTime    time.Time
-	requestCount int
-	succesful    int
 }
 
 func NewApiServer(addr string) *ApiServer {
-	return &ApiServer{addr: addr, startTime: time.Now(), requestCount: 0, succesful: 0}
+	return &ApiServer{ addr: addr, startTime: time.Now() }
 }
 
 func (s *ApiServer) Run() error {
