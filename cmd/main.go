@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	server := api.NewApiServer("http://localhost:8080")
+	server := api.NewApiServer("localhost:8080")
 	log.Fatal(server.Run())
 }
