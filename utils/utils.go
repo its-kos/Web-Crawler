@@ -8,20 +8,24 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func ValidateURL(givenUrl string) (*url.URL, error) {
+// This assumes that the main url given is valid.
+func ValidateInternalURL(givenUrl string, domainURL *url.URL) (string, bool) {
 	parsedURL, err := url.Parse(givenUrl)
-	// This might be too strict for this use case. We can modify it later.
-	// Only allows http(s)://www.domain.com type of URLs
-	if err == nil && parsedURL.Scheme != "" && parsedURL.Host != "" {
-		return parsedURL, nil
-	} else {
-		return nil, err
+	if err != nil {
+		return "", false
 	}
+
+	resolvedURL := domainURL.ResolveReference(parsedURL)
+	if resolvedURL.Host != domainURL.Host {
+		return "", false
+	}
+
+	return resolvedURL.String(), true
 }
 
 func FetchHTML(givenUrl string) (*goquery.Document, error) {
 	res, err := http.Get(givenUrl)
-	if err != nil {
+	if err != nil || res.StatusCode != http.StatusOK {
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -34,49 +38,59 @@ func FetchHTML(givenUrl string) (*goquery.Document, error) {
 	return doc, nil
 }
 
-func ExtractPageURLs(doc goquery.Document) ([]string, error) {
-	var hrefs []string
-	urls := doc.Find("a")
-
-	//log.Println("Found ", urls.Size(), " links")
-
-	for _, url := range urls.Nodes {
-		log.Println("Link: ", url.Attr[0].Val)
-		hrefs = append(hrefs, url.Attr[0].Val)
+func ExtractPageURLs(currUrl string) ([]string, error) {
+	doc, err := FetchHTML(currUrl)
+	if err != nil {
+		return nil, err
 	}
+
+	var hrefs []string
+
+	doc.Find("a").Each(func(i int, s *goquery.Selection) { // Apparently this is the goquery way ??
+		// Safer cause it checks first if the attribute exists
+		if href, exists := s.Attr("href"); exists {
+			hrefs = append(hrefs, href)
+		}
+	})
 
 	return hrefs, nil
 }
 
-func BFS(start string) ([]string, error) { // BFS because links on the same level might be more relevant
+// BFS instead if DFS because links on the same level might be more relevant.
+// This also assumes that the first url is valid and in the same domain.
+// For the rest of the urls we check.
+func BFS(start string) ([]string, error) {
+
+	domainURL, err := url.Parse(start) // Unfortunately we have to do this once here to avoid reparsing on every validate call
+	if err != nil {
+		return nil, err
+	}
+
 	finalUrls := []string{start}
 	queue := []string{start}
 	visited := make(map[string]bool)
 
 	for len(queue) > 0 {
 		currUrl := queue[0]
-		log.Println("Visiting: ", currUrl)
 		queue = queue[1:]
+
 		if visited[currUrl] {
 			continue
 		}
 
 		visited[currUrl] = true
 
-		doc, err := FetchHTML(currUrl)
+		urls, err := ExtractPageURLs(currUrl)
 		if err != nil {
 			return nil, err
 		}
 
-		urls, err := ExtractPageURLs(*doc)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, u := range urls {
-			if _, ok := visited[u]; !ok {
-				finalUrls = append(finalUrls, u)
-				queue = append(queue, u)
+		for _, url := range urls {
+			if resolved, valid := ValidateInternalURL(url, domainURL); valid {
+				if _, ok := visited[resolved]; !ok {
+					finalUrls = append(finalUrls, resolved)
+					queue = append(queue, resolved)
+				}
 			}
 		}
 	}
