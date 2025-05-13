@@ -34,17 +34,11 @@ func FetchHTML(givenUrl string) (*goquery.Document, error) {
 	return doc, nil
 }
 
-// For now this only find the top level links
-// This must be expanded upon to do a full "tree" search.
-// Same as BFS/DFS with a stack/queue
-func ExtractURLs(doc goquery.Document) ([]string, error) {
+func ExtractPageURLs(doc goquery.Document) ([]string, error) {
 	var hrefs []string
 	urls := doc.Find("a")
-	// Images can also link but they point to a file, not a page
-	//imgs := doc.Find("img") 
 
-	log.Println("Found ", urls.Size(), " links")
-	//log.Println("Found", imgs.Size(), "images")
+	//log.Println("Found ", urls.Size(), " links")
 
 	for _, url := range urls.Nodes {
 		log.Println("Link: ", url.Attr[0].Val)
@@ -52,4 +46,39 @@ func ExtractURLs(doc goquery.Document) ([]string, error) {
 	}
 
 	return hrefs, nil
+}
+
+func BFS(start string) ([]string, error) { // BFS because links on the same level might be more relevant
+	finalUrls := []string{start}
+	queue := []string{start}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		currUrl := queue[0]
+		log.Println("Visiting: ", currUrl)
+		queue = queue[1:]
+		if visited[currUrl] {
+			continue
+		}
+
+		visited[currUrl] = true
+
+		doc, err := FetchHTML(currUrl)
+		if err != nil {
+			return nil, err
+		}
+
+		urls, err := ExtractPageURLs(*doc)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, u := range urls {
+			if _, ok := visited[u]; !ok {
+				finalUrls = append(finalUrls, u)
+				queue = append(queue, u)
+			}
+		}
+	}
+	return finalUrls, nil
 }
