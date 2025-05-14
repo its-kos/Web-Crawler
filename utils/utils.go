@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 
@@ -61,10 +60,10 @@ func ExtractPageURLs(currUrl string) ([]string, error) {
 // For the rest of the urls we check.
 func BFS(start string) ([]string, error) {
 
-	domainURL, err := url.Parse(start) // Unfortunately we have to do this once here to avoid reparsing on every validate call
-	if err != nil {
-		return nil, err
-	}
+	// domainURL, err := url.Parse(start) // Unfortunately we have to do this once here to avoid reparsing on every validate call
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	finalUrls := []string{start}
 	queue := []string{start}
@@ -85,8 +84,13 @@ func BFS(start string) ([]string, error) {
 			return nil, err
 		}
 
+		parsedCurrURL, err := url.Parse(currUrl)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, url := range urls {
-			if resolved, valid := ValidateInternalURL(url, domainURL); valid {
+			if resolved, valid := ValidateInternalURL(url, parsedCurrURL); valid {
 				if _, ok := visited[resolved]; !ok {
 					finalUrls = append(finalUrls, resolved)
 					queue = append(queue, resolved)
