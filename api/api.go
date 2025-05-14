@@ -20,7 +20,7 @@ func NewApiServer(addr string) *ApiServer {
 
 func (s *ApiServer) Run() error {
 	router := chi.NewRouter()
-	router.Use(middleware.Logger) // <--<< Logger should come before Recoverer
+	router.Use(middleware.Logger) // Logger should come before Recoverer apparently
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Heartbeat("/status"))
 

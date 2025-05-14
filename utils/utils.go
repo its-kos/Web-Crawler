@@ -7,15 +7,19 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// This assumes that the main url given is valid.
-func ValidateInternalURL(givenUrl string, domainURL *url.URL) (string, bool) {
+func ValidateInternalURL(givenUrl string, domainURL string) (string, bool) {
+	parsedDomainURL, err := url.Parse(domainURL)
+	if err != nil {
+		return "", false
+	}
+
 	parsedURL, err := url.Parse(givenUrl)
 	if err != nil {
 		return "", false
 	}
 
-	resolvedURL := domainURL.ResolveReference(parsedURL)
-	if resolvedURL.Host != domainURL.Host {
+	resolvedURL := parsedDomainURL.ResolveReference(parsedURL)
+	if resolvedURL.Host != parsedDomainURL.Host {
 		return "", false
 	}
 
@@ -55,15 +59,10 @@ func ExtractPageURLs(currUrl string) ([]string, error) {
 	return hrefs, nil
 }
 
-// BFS instead if DFS because links on the same level might be more relevant.
+// BFS instead if DFS because links on the same level might be more relevant (Not that it matters that much).
 // This also assumes that the first url is valid and in the same domain.
 // For the rest of the urls we check.
 func BFS(start string) ([]string, error) {
-
-	// domainURL, err := url.Parse(start) // Unfortunately we have to do this once here to avoid reparsing on every validate call
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	finalUrls := []string{start}
 	queue := []string{start}
@@ -84,13 +83,8 @@ func BFS(start string) ([]string, error) {
 			return nil, err
 		}
 
-		parsedCurrURL, err := url.Parse(currUrl)
-		if err != nil {
-			return nil, err
-		}
-
 		for _, url := range urls {
-			if resolved, valid := ValidateInternalURL(url, parsedCurrURL); valid {
+			if resolved, valid := ValidateInternalURL(url, currUrl); valid {
 				if _, ok := visited[resolved]; !ok {
 					finalUrls = append(finalUrls, resolved)
 					queue = append(queue, resolved)
